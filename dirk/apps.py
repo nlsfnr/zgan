@@ -4,6 +4,8 @@ from pathlib import Path
 import shutil
 from typing import Optional
 
+from .utils import AttrDict
+
 
 logger = getLogger('apps')
 
@@ -23,12 +25,40 @@ def create_proj(name: Optional[str], zoo: Path, config: Path) -> None:
     wd.mkdir(parents=True)
     shutil.copy(config, wd / 'config.yaml')
     (wd / 'checkpoints').mkdir()
-    # Point 'latest' symlink in zoo to the newly created project
+    _point_latest_to(zoo, name)
+
+
+@click.argument('name', type=str)
+@click.option('--zoo', '-z', type=Path, default=Path('./zoo/'))
+def focus(name: str, zoo: Path) -> None:
+    if name == 'latest':
+        raise ValueError('Name can not be "latest"')
+    _point_latest_to(zoo, name)
+
+
+@click.option('--name', '-n', type=str, default='latest')
+@click.option('--zoo', '-z', type=Path, default=Path('./zoo/'))
+def train(name: str, zoo: Path) -> None:
+    wd = zoo / name
+    if not wd.exists():
+        raise FileNotFoundError(f'Project not found: {wd}')
+    cfg = AttrDict.from_yaml(wd / 'config.yaml')
+    print(cfg)
+
+
+def _point_latest_to(zoo: Path, name: str) -> None:
+    if name == 'latest':
+        return
+    wd = zoo / name
+    if not wd.exists():
+        raise FileNotFoundError(f'Project does not exist: {wd}')
     symlink = zoo / 'latest'
     if symlink.exists():
+        if wd.resolve() == symlink.resolve():
+            return
         symlink.unlink()
     symlink.symlink_to(name)
-    logger.info(f'Pointed {symlink} to {wd}')
+    logger.info(f'Pointed {symlink} to {zoo / name}')
 
 
 def random_name(prefix: str = 'proj') -> str:

@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=10gb
-#SBATCH --output=./viking/job-%j.log
+#SBATCH --output=./viking/jobs/job-%j.log
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00

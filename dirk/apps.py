@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 from typing import Optional
 
-from .utils import AttrDict
+from .sidecar import Sidecar
 
 
 logger = getLogger('apps')
@@ -42,8 +42,9 @@ def train(name: str, zoo: Path) -> None:
     wd = zoo / name
     if not wd.exists():
         raise FileNotFoundError(f'Project not found: {wd}')
-    cfg = AttrDict.from_yaml(wd / 'config.yaml')
-    print(cfg)
+    sc = Sidecar.from_workdir(wd)
+    trainer = sc.trainer
+    trainer.train()
 
 
 def _point_latest_to(zoo: Path, name: str) -> None:

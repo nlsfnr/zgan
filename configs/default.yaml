@@ -1,4 +1,27 @@
 config: default
+use_gpu: true
+
+data:
+  root: ./data/birds/
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+
 img:
   size: 128
   channels: 3
+
+optim:
+  batch_size: 64
+  gen:
+    lr: 0.0002
+  dis:
+    lr: 0.0002
+
+arch:
+  gen:
+    z: 64
+    width: 32
+  dis:
+    width: 32

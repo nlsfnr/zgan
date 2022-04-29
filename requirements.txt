@@ -9,3 +9,4 @@ matplotlib
 jupyterlab
 click
 pyyaml
+tqdm

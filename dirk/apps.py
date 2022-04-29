@@ -2,17 +2,20 @@ import click
 from logging import getLogger
 from pathlib import Path
 import shutil
+import torch
 from typing import Optional
 
 from .sidecar import Sidecar
+from .utils import AttrDict, show_grid
+from . import models
 
 
 logger = getLogger('apps')
 
 
-@click.option('--name', '-n', type=str, default=None)
-@click.option('--zoo', '-z', type=Path, default=Path('./zoo/'))
-@click.option('--config', '-c', type=Path,
+@click.option('--name', type=str, default=None)
+@click.option('--zoo', type=Path, default=Path('./zoo/'))
+@click.option('--config', type=Path,
               default=Path('./configs/default.yaml'))
 def create_proj(name: Optional[str], zoo: Path, config: Path) -> None:
     if name is None:
@@ -29,15 +32,15 @@ def create_proj(name: Optional[str], zoo: Path, config: Path) -> None:
 
 
 @click.argument('name', type=str)
-@click.option('--zoo', '-z', type=Path, default=Path('./zoo/'))
+@click.option('--zoo', type=Path, default=Path('./zoo/'))
 def focus(name: str, zoo: Path) -> None:
     if name == 'latest':
         raise ValueError('Name can not be "latest"')
     _point_latest_to(zoo, name)
 
 
-@click.option('--name', '-n', type=str, default='latest')
-@click.option('--zoo', '-z', type=Path, default=Path('./zoo/'))
+@click.option('--name', type=str, default='latest')
+@click.option('--zoo', type=Path, default=Path('./zoo/'))
 def train(name: str, zoo: Path) -> None:
     wd = zoo / name
     if not wd.exists():
@@ -45,6 +48,27 @@ def train(name: str, zoo: Path) -> None:
     sc = Sidecar.from_workdir(wd)
     trainer = sc.trainer
     trainer.train()
+
+
+@click.option('--name', type=str, default='latest')
+@click.option('--zoo', type=Path, default=Path('./zoo/'))
+@click.option('-n', type=int, default=16)
+def show(name: str, zoo: Path, n: int) -> None:
+    wd = zoo / name
+    if not wd.exists():
+        raise FileNotFoundError(f'Project not found: {wd}')
+    cfg = AttrDict.from_yaml(wd / 'config.yaml')
+    checkpoint = wd / 'latest.cp'
+    logger.info(f'Loading Generator from {checkpoint}')
+    state = torch.load(checkpoint)
+    assert isinstance(state, AttrDict)
+    gen_state = state.trainer.gen
+    gen = models.Generator(cfg)
+    gen.load_state_dict(gen_state)
+    logger.info(f'Generating {n} images')
+    z = gen.random_z(n)
+    imgs = gen(z)
+    show_grid(imgs)
 
 
 def _point_latest_to(zoo: Path, name: str) -> None:

@@ -56,28 +56,31 @@ class Generator(nn.Module):
             nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2),
             # 8 x 8
-            nn.Conv2d(f * 8, f * 4, 5, 1, 2, bias=False),
+            nn.Conv2d(f * 8, f * 4, 3, 1, 1, bias=False),
             nn.BatchNorm2d(f * 4),  # type: ignore
             nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2),
             # 16 x 16
-            nn.Conv2d(f * 4, f * 2, 5, 1, 2, bias=True),
+            nn.Conv2d(f * 4, f * 2, 3, 1, 1, bias=True),
             # nn.BatchNorm2d(f * 2),  # type: ignore
             nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2),
             # 32 x 32
-            nn.Conv2d(f * 2, f * 2, 5, 1, 2, bias=False),
+            nn.Conv2d(f * 2, f * 2, 3, 1, 1, bias=False),
             nn.BatchNorm2d(f * 2),  # type: ignore
             nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2),
             # 64 x 64
-            nn.Conv2d(f * 2, f, 5, 1, 2, bias=True),
-            # nn.BatchNorm2d(f),  # type: ignore
+            nn.Conv2d(f * 2, f * 2, 3, 1, 1, bias=True),
             nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2),
             # 128 x 128
-            nn.Conv2d(f, c, 5, 1, 2),
-            nn.Sigmoid(),
+            nn.Conv2d(f * 2, f, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(f),  # type: ignore
+            nn.ReLU(inplace=True),
+            # 128 x 128
+            nn.Conv2d(f, c, 3, 1, 1),
+            nn.Tanh(),
         )
         self.apply(radford_init)
 
@@ -89,6 +92,13 @@ class Generator(nn.Module):
         assert isinstance(imgs, Tensor)
         return imgs
 
+    def __str__(self) -> str:
+        # To prevent dataclass from generating this
+        return super().__str__()
+
+    def __repr__(self) -> str:
+        # To prevent dataclass from generating this
+        return super().__repr__()
 
 @dataclass(unsafe_hash=True)
 class Discriminator(nn.Module):
@@ -101,27 +111,30 @@ class Discriminator(nn.Module):
         self.main = nn.Sequential(
             RandomHorizontalFlip(),
             # cfg.img_channels x 128 x 128
-            nn.Conv2d(c, f, 4, 2, 1, bias=False),
+            nn.Conv2d(c, f, 5, 2, 2, bias=False),
             nn.BatchNorm2d(f),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf x 64 x 64
-            nn.Conv2d(f, f * 4, 4, 2, 1, bias=False),
+            nn.Conv2d(f, f * 4, 5, 2, 2, bias=False),
             nn.BatchNorm2d(f * 4),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf x 32 x 32
-            nn.Conv2d(f * 4, f * 4, 4, 2, 1, bias=False),
+            nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
             nn.BatchNorm2d(f * 4),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf * 2 x 16 x 16
-            nn.Conv2d(f * 4, f * 4, 4, 2, 1, bias=False),
+            nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
             nn.BatchNorm2d(f * 4),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf * 4 x 8 x 8
-            nn.Conv2d(f * 4, f * 8, 4, 2, 1, bias=False),
+            nn.Conv2d(f * 4, f * 8, 3, 2, 1, bias=False),
             nn.BatchNorm2d(f * 8),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf * 8 x 4 x 4
-            nn.Conv2d(f * 8, 1, 4, 1, 0),
+            nn.Conv2d(f * 8, f * 8, 4, 1, 0),
+            nn.LeakyReLU(0.2, inplace=True),
+            # cf * 8 x 1 x 1
+            nn.Conv2d(f * 8, 1, 1, 1, 0),
             nn.Sigmoid(),
             # 1 x 1 x 1
         )

@@ -14,6 +14,7 @@ def cli() -> None:
 cli.command('create')(apps.create_proj)
 cli.command('train')(apps.train)
 cli.command('focus')(apps.focus)
+cli.command('show')(apps.show)
 
 
 if __name__ == '__main__':

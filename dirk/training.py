@@ -33,32 +33,29 @@ class Trainer:
     sidecar: sidecar_.Sidecar
     dataset: dataset_.ImgDataset
     _device: torch.device = field(init=False)
-    _gen_gpu: Optional[nn.DataParallel] = field(init=False)  # type: ignore
-    _dis_gpu: Optional[nn.DataParallel] = field(init=False)  # type: ignore
+    _gen_gpu: Optional[nn.DataParallel] = None  # type: ignore
+    _dis_gpu: Optional[nn.DataParallel] = None  # type: ignore
 
     def __post_init__(self) -> None:
         self.sidecar.attach(self)
+        self._device = self.get_device(self.cfg)
         if self.cfg.use_gpu:
             gpu_ids = tuple(range(torch.cuda.device_count()))
-            self._device = torch.device('cuda')
             logger.info(f'Using CUDA with GPUs: {gpu_ids}')
             self._gen_gpu = nn.DataParallel(self.gen, gpu_ids)  # type: ignore
-            self._gen_gpu.to(self._device)
             self._dis_gpu = nn.DataParallel(self.dis, gpu_ids)  # type: ignore
-            self._dis_gpu.to(self._device)
         else:
             logger.info('Using CPU')
-            self._device = torch.device('cpu')
-            self._gen_gpu = None
-            self._dis_gpu = None
 
     @classmethod
     def from_config(cls, cfg: AttrDict, sc: sidecar_.Sidecar) -> Trainer:
         # Instantiate modules with default initialisation
-        gen = Generator(cfg)
-        dis = Discriminator(cfg)
+        device = cls.get_device(cfg)
+        gen = Generator(cfg).to(device)
+        dis = Discriminator(cfg).to(device)
         gen_opt, dis_opt = cls._get_optimizers(gen, dis, cfg)
         dataset = dataset_.ImgDataset(cfg)
+        logger.info(f'Loading trainer from config in {sc.workdir}')
         return cls(cfg, gen, dis, gen_opt, dis_opt, sc, dataset)
 
     def get_state(self) -> AttrDict:
@@ -73,8 +70,11 @@ class Trainer:
     def from_state(cls, cfg: AttrDict, sc: sidecar_.Sidecar, state: AttrDict
                    ) -> Trainer:
         # Instantiate modules
-        gen = Generator(cfg)
-        dis = Discriminator(cfg)
+        device = cls.get_device(cfg)
+        # The models need to be on the device before being assigned to an
+        # optimizer.
+        gen = Generator(cfg).to(device)
+        dis = Discriminator(cfg).to(device)
         gen_opt, dis_opt = cls._get_optimizers(gen, dis, cfg)
         dataset = dataset_.ImgDataset(cfg)
         # Initialize modules
@@ -83,6 +83,10 @@ class Trainer:
         gen_opt.load_state_dict(state.gen_opt)
         dis_opt.load_state_dict(state.dis_opt)
         return cls(cfg, gen, dis, gen_opt, dis_opt, sc, dataset)
+
+    @staticmethod
+    def get_device(cfg: AttrDict) -> torch.device:
+        return torch.device('cuda' if cfg.use_gpu else 'cpu')
 
     @staticmethod
     def _get_optimizers(gen: Generator, dis: Discriminator, cfg: AttrDict
@@ -151,8 +155,6 @@ class Trainer:
         self.sidecar.on_training_stop()
 
     def train_batch(self, batch: Tensor) -> Tuple[float, float]:
-        self.gen.train()
-        self.dis.train()
         batch_size = batch.size(0)
         # Train the discriminator...
         self.dis.zero_grad()

@@ -14,7 +14,7 @@ from typing import cast, Optional, List
 from .utils import AttrDict
 
 
-logger = logging.getLogger('gan.dataset')
+logger = logging.getLogger('dataset')
 
 
 @dataclass
@@ -86,4 +86,4 @@ class ImgDataset(Dataset[Tensor]):
 
     @staticmethod
     def img_to_float(img: Tensor) -> Tensor:
-        return img.float() / 255.
+        return img.float() / 127.5 - 1.

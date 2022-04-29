@@ -1,6 +1,10 @@
 config: default
 use_gpu: true
 
+log:
+  log_freq: 10
+  save_freq: 100
+
 data:
   root: ./data/birds/
   extensions:

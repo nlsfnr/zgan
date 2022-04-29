@@ -74,7 +74,12 @@ class Sidecar:
         pass
 
     def on_batch_stop(self, dis_loss: float, gen_loss: float) -> None:
-        logger.info(f'It: {self.iteration}, Dis: {dis_loss}, Gen: {gen_loss}')
+        if self.periodically(self.cfg.log.log_freq):
+            logger.info(f'It: {self.iteration}, '
+                        f'Dis: {dis_loss}, '
+                        f'Gen: {gen_loss}')
+        if self.periodically(self.cfg.log.save_freq, skip_first=True):
+            self.save()
         self.iteration += 1
 
     def on_training_start(self) -> None:
@@ -82,3 +87,8 @@ class Sidecar:
 
     def on_training_stop(self) -> None:
         logger.info('Stopped training')
+
+    def periodically(self, freq: int, skip_first: bool = False) -> bool:
+        if self.iteration == 0 and skip_first:
+            return False
+        return self.iteration % freq == 0

@@ -1,0 +1,4 @@
+config: default
+img:
+  size: 128
+  channels: 3

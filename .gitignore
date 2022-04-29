@@ -1,0 +1,5 @@
+.venv/
+zoo/
+data
+.name_counter
+.requirements.freeze.txt

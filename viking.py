@@ -1,3 +1,4 @@
+# type: ignore
 import click
 import subprocess as sp
 from dataclasses import dataclass

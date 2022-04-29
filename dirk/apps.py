@@ -60,7 +60,7 @@ def show(name: str, zoo: Path, n: int) -> None:
     cfg = AttrDict.from_yaml(wd / 'config.yaml')
     checkpoint = wd / 'latest.cp'
     logger.info(f'Loading Generator from {checkpoint}')
-    state = torch.load(checkpoint)
+    state = torch.load(checkpoint)  # type: ignore
     assert isinstance(state, AttrDict)
     gen_state = state.trainer.gen
     gen = models.Generator(cfg)

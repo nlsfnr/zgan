@@ -98,7 +98,8 @@ class Generator(nn.Module):
 
     def __repr__(self) -> str:
         # To prevent dataclass from generating this
-        return super().__repr__()
+        return super().__repr__()  # type: ignore
+
 
 @dataclass(unsafe_hash=True)
 class Discriminator(nn.Module):

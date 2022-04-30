@@ -28,6 +28,13 @@ optim:
     betas: [0.5, 0.999]
     weight_decay: 0.001
 
+wandb:
+  enable: true
+  project: zgan
+  group: birds
+  tags: [birds, 3x128x128]
+  log_frequency: 10
+
 arch:
   gen:
     z: 64

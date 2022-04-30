@@ -4,3 +4,4 @@ data
 .name_counter
 .requirements.freeze.txt
 viking-results/
+wandb/

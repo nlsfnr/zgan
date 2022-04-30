@@ -9,4 +9,4 @@ matplotlib
 jupyterlab
 click
 pyyaml
-tqdm
+wandb

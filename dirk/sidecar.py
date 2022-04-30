@@ -74,7 +74,7 @@ class Sidecar:
         pass
 
     def on_batch_stop(self, dis_loss: float, gen_loss: float) -> None:
-        if self.periodically(self.cfg.log.log_freq):
+        if self.periodically(self.cfg.log.log_freq, skip_first=True):
             logger.info(f'It: {self.iteration}, '
                         f'Dis: {dis_loss}, '
                         f'Gen: {gen_loss}')

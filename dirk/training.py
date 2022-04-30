@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch
 from logging import getLogger
 from itertools import count
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, Iterator
 
 from .utils import AttrDict
 from .models import Generator, Discriminator
@@ -91,10 +91,16 @@ class Trainer:
     @staticmethod
     def _get_optimizers(gen: Generator, dis: Discriminator, cfg: AttrDict
                         ) -> Tuple[optim.AdamW, optim.AdamW]:
-        gen_opt = optim.AdamW(gen.parameters(), lr=cfg.optim.gen.lr,
-                              betas=(0.5, 0.999))
-        dis_opt = optim.AdamW(dis.parameters(), lr=cfg.optim.dis.lr,
-                              betas=(0.5, 0.999))
+        gen_betas: Tuple[float, float] = cfg.optim.gen.betas
+        dis_betas: Tuple[float, float] = cfg.optim.dis.betas
+        gen_opt = optim.AdamW(gen.parameters(),
+                              lr=cfg.optim.gen.lr,
+                              weight_decay=cfg.optim.gen.weight_decay,
+                              betas=gen_betas)
+        dis_opt = optim.AdamW(dis.parameters(),
+                              lr=cfg.optim.dis.lr,
+                              weight_decay=cfg.optim.dis.weight_decay,
+                              betas=dis_betas)
         return gen_opt, dis_opt
 
     @property
@@ -142,9 +148,9 @@ class Trainer:
                                      batch_size=self.cfg.optim.batch_size,
                                      shuffle=True)
             imgs_stream = (imgs for _ in count() for imgs in data_loader)
-            for imgs in imgs_stream:
+            while True:
                 self.sidecar.on_batch_start()
-                dis_loss, gen_loss = self.train_batch(imgs)
+                dis_loss, gen_loss = self.train_batch(imgs_stream)
                 self.sidecar.on_batch_stop(dis_loss, gen_loss)
                 if iters == 0:
                     break
@@ -154,22 +160,28 @@ class Trainer:
             pass
         self.sidecar.on_training_stop()
 
-    def train_batch(self, batch: Tensor) -> Tuple[float, float]:
-        batch_size = batch.size(0)
-        # Train the discriminator...
-        self.dis.zero_grad()
-        # ... on real images ...
-        labels = torch.full((batch_size, 1), REAL, device=self._device)
-        preds = self.call_dis(batch)
-        dis_real_loss = F.binary_cross_entropy(preds, labels)
-        dis_real_loss.backward()  # type: ignore
-        # ... and on fake images.
-        z = self.gen.random_z(batch_size)
-        generated_batch = self.call_gen(z)
-        labels = torch.full((batch_size, 1), GENERATED, device=self._device)
-        preds = self.call_dis(generated_batch.detach())
-        dis_fake_loss = F.binary_cross_entropy(preds, labels)
-        dis_fake_loss.backward()  # type: ignore
+    def train_batch(self, batches: Iterator[Tensor]) -> Tuple[float, float]:
+        assert self.cfg.optim.dis_iters_per_gen_iter > 0
+        for _ in range(self.cfg.optim.dis_iters_per_gen_iter):
+            # Train the discriminator...
+            self.dis.zero_grad()
+            # ... on real images ...
+            batch = next(batches)
+            batch_size = batch.size(0)
+            labels = torch.full((batch_size, 1), REAL, device=self._device)
+            preds = self.call_dis(batch)
+            dis_real_loss = F.binary_cross_entropy(preds, labels)
+            dis_real_loss.backward()  # type: ignore
+            # ... and on fake images.
+            z = self.gen.random_z(batch_size)
+            generated_batch = self.call_gen(z)
+            labels = torch.full((batch_size, 1), GENERATED,
+                                device=self._device)
+            preds = self.call_dis(generated_batch.detach())
+            dis_fake_loss = F.binary_cross_entropy(preds, labels)
+            dis_fake_loss.backward()  # type: ignore
+            # Update the parameters
+            self.dis_opt.step()
         # Train the generator using the discriminators 'feedback'.
         self.gen.zero_grad()
         desired_labels = torch.full((batch_size, 1), REAL, device=self._device)
@@ -177,7 +189,6 @@ class Trainer:
         gen_loss = F.binary_cross_entropy(preds, desired_labels)
         gen_loss.backward()  # type: ignore
         # Update the parameters
-        self.dis_opt.step()
         self.gen_opt.step()
         # Return the losses
         dis_loss = (dis_real_loss + dis_fake_loss) / 2.

@@ -80,12 +80,12 @@ class Generator(nn.Module):
             nn.ReLU(inplace=True),
             # 128 x 128
             nn.Conv2d(f, c, 3, 1, 1),
-            nn.Tanh(),
+            nn.Sigmoid(),
         )
         self.apply(radford_init)
 
     def random_z(self, n: int) -> Tensor:
-        return torch.rand(size=(n, self.cfg.arch.gen.z, 1, 1))
+        return torch.randn(size=(n, self.cfg.arch.gen.z, 1, 1))
 
     def forward(self, z: Tensor) -> Tensor:
         imgs = self.main(z)
@@ -110,13 +110,13 @@ class Discriminator(nn.Module):
         f = self.cfg.arch.dis.width
         c = self.cfg.img.channels
         self.main = nn.Sequential(
-            RandomHorizontalFlip(),
+            # RandomHorizontalFlip(),
             # cfg.img_channels x 128 x 128
-            nn.Conv2d(c, f, 5, 2, 2, bias=False),
+            nn.Conv2d(c, f, 5, 2, 1, bias=False),
             nn.BatchNorm2d(f),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf x 64 x 64
-            nn.Conv2d(f, f * 4, 5, 2, 2, bias=False),
+            nn.Conv2d(f, f * 4, 5, 2, 1, bias=False),
             nn.BatchNorm2d(f * 4),  # type: ignore
             nn.LeakyReLU(0.2, inplace=True),
             # cf x 32 x 32
@@ -145,3 +145,11 @@ class Discriminator(nn.Module):
         preds = self.main(imgs).squeeze(dim=-1).squeeze(dim=-1)
         assert isinstance(preds, Tensor)
         return preds
+
+    def __str__(self) -> str:
+        # To prevent dataclass from generating this
+        return super().__str__()
+
+    def __repr__(self) -> str:
+        # To prevent dataclass from generating this
+        return super().__repr__()  # type: ignore

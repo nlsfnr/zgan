@@ -86,4 +86,4 @@ class ImgDataset(Dataset[Tensor]):
 
     @staticmethod
     def img_to_float(img: Tensor) -> Tensor:
-        return img.float() / 127.5 - 1.
+        return img.float() / 255.

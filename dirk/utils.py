@@ -23,8 +23,15 @@ class AttrDict(Dict[str, Any]):
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> AttrDict:
-        return AttrDict(**{k: cls.from_dict(v) if isinstance(v, dict) else v
-                           for k, v in d.items()})
+        return AttrDict(**{k: cls._from_obj(v) for k, v in d.items()})
+
+    @classmethod
+    def _from_obj(cls, o: Any) -> Any:
+        if isinstance(o, dict):
+            return cls.from_dict(o)
+        if isinstance(o, list):
+            return [cls._from_obj(x) for x in o]
+        return o
 
     @classmethod
     def from_yaml(cls, path: Path) -> AttrDict:

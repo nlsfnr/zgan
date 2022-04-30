@@ -40,48 +40,28 @@ class RandomHorizontalFlip(nn.Module):
         return torch.stack(new_imgs)
 
 
+def build_layer(spec: AttrDict) -> nn.Module:
+    cls = {'ConvTranspose2d': nn.ConvTranspose2d,
+           'Upsample': nn.Upsample,
+           'Conv2d': nn.Conv2d,
+           'ReLU': nn.ReLU,
+           'LeakyReLU': nn.LeakyReLU,
+           'BatchNorm2d': nn.BatchNorm2d,
+           'Sigmoid': nn.Sigmoid,
+           'RandomHorizontalFlip': RandomHorizontalFlip}[spec.type]
+    module = cls(*spec.args, **spec.kwargs)
+    assert isinstance(module, nn.Module)
+    return module
+
+
 @dataclass(unsafe_hash=True)
 class Generator(nn.Module):
     cfg: AttrDict = field(hash=False)
 
     def __post_init__(self) -> None:
         super().__init__()
-        f = self.cfg.arch.gen.width
-        z = self.cfg.arch.gen.z
-        c = self.cfg.img.channels
-        self.main = nn.Sequential(
-            # input: 1 x 1
-            nn.ConvTranspose2d(z, f * 8, 4, 1, 0, bias=True),
-            # nn.BatchNorm2d(f * 8),  # type: ignore
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            # 8 x 8
-            nn.Conv2d(f * 8, f * 4, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(f * 4),  # type: ignore
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            # 16 x 16
-            nn.Conv2d(f * 4, f * 2, 3, 1, 1, bias=True),
-            # nn.BatchNorm2d(f * 2),  # type: ignore
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            # 32 x 32
-            nn.Conv2d(f * 2, f * 2, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(f * 2),  # type: ignore
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            # 64 x 64
-            nn.Conv2d(f * 2, f * 2, 3, 1, 1, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            # 128 x 128
-            nn.Conv2d(f * 2, f, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(f),  # type: ignore
-            nn.ReLU(inplace=True),
-            # 128 x 128
-            nn.Conv2d(f, c, 3, 1, 1),
-            nn.Sigmoid(),
-        )
+        self.main = nn.Sequential(*[build_layer(spec)
+                                    for spec in self.cfg.arch.gen.layers])
         self.apply(radford_init)
 
     def random_z(self, n: int) -> Tensor:
@@ -107,38 +87,40 @@ class Discriminator(nn.Module):
 
     def __post_init__(self) -> None:
         super().__init__()
-        f = self.cfg.arch.dis.width
-        c = self.cfg.img.channels
-        self.main = nn.Sequential(
-            # RandomHorizontalFlip(),
-            # cfg.img_channels x 128 x 128
-            nn.Conv2d(c, f, 5, 2, 1, bias=False),
-            nn.BatchNorm2d(f),  # type: ignore
-            nn.LeakyReLU(0.2, inplace=True),
-            # cf x 64 x 64
-            nn.Conv2d(f, f * 4, 5, 2, 1, bias=False),
-            nn.BatchNorm2d(f * 4),  # type: ignore
-            nn.LeakyReLU(0.2, inplace=True),
-            # cf x 32 x 32
-            nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(f * 4),  # type: ignore
-            nn.LeakyReLU(0.2, inplace=True),
-            # cf * 2 x 16 x 16
-            nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(f * 4),  # type: ignore
-            nn.LeakyReLU(0.2, inplace=True),
-            # cf * 4 x 8 x 8
-            nn.Conv2d(f * 4, f * 8, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(f * 8),  # type: ignore
-            nn.LeakyReLU(0.2, inplace=True),
-            # cf * 8 x 4 x 4
-            nn.Conv2d(f * 8, f * 8, 4, 1, 0),
-            nn.LeakyReLU(0.2, inplace=True),
-            # cf * 8 x 1 x 1
-            nn.Conv2d(f * 8, 1, 1, 1, 0),
-            nn.Sigmoid(),
-            # 1 x 1 x 1
-        )
+        # f = self.cfg.arch.dis.width
+        # c = self.cfg.img.channels
+        # self.main = nn.Sequential(
+        #     # RandomHorizontalFlip(),
+        #     # cfg.img_channels x 128 x 128
+        #     nn.Conv2d(c, f, 5, 2, 1, bias=False),
+        #     nn.BatchNorm2d(f),  # type: ignore
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     # cf x 64 x 64
+        #     nn.Conv2d(f, f * 4, 5, 2, 1, bias=False),
+        #     nn.BatchNorm2d(f * 4),  # type: ignore
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     # cf x 32 x 32
+        #     nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
+        #     nn.BatchNorm2d(f * 4),  # type: ignore
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     # cf * 2 x 16 x 16
+        #     nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
+        #     nn.BatchNorm2d(f * 4),  # type: ignore
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     # cf * 4 x 8 x 8
+        #     nn.Conv2d(f * 4, f * 8, 3, 2, 1, bias=False),
+        #     nn.BatchNorm2d(f * 8),  # type: ignore
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     # cf * 8 x 4 x 4
+        #     nn.Conv2d(f * 8, f * 8, 4, 1, 0),
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     # cf * 8 x 1 x 1
+        #     nn.Conv2d(f * 8, 1, 1, 1, 0),
+        #     nn.Sigmoid(),
+        #     # 1 x 1 x 1
+        # )
+        self.main = nn.Sequential(*[build_layer(spec)
+                                    for spec in self.cfg.arch.dis.layers])
         self.apply(radford_init)
 
     def forward(self, imgs: Tensor) -> Tensor:

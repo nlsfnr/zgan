@@ -1,0 +1,185 @@
+config: no-upsample
+use_gpu: true
+
+log:
+  log_freq: 10
+  save_freq: 100
+
+data:
+  root: ./data/birds/
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+
+img:
+  size: 128
+  channels: 3
+
+optim:
+  batch_size: 32
+  dis_iters_per_gen_iter: 2
+  gen:
+    lr: 0.0002
+    betas: [0.5, 0.999]
+    weight_decay: 0.0
+  dis:
+    lr: 0.0002
+    betas: [0.5, 0.999]
+    weight_decay: 0.001
+
+wandb:
+  enable: true
+  project: zgan
+  group: birds
+  tags: [birds, 3x128x128]
+  log_frequency: 10
+
+arch:
+  gen:
+    z: 512
+    layers:
+      # Block 1: 512 x 1 x 1
+      - type: ConvTranspose2d
+        args: [512, 1024, 8, 1, 0]
+        kwargs: { bias: true }
+      # Block 2: 1024 x 8 x 8
+      - type: Conv2d
+        args: [1024, 512, 3, 1, 1]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [512]
+        kwargs: {}
+      - type: ReLU
+        args: []
+        kwargs: { inplace: true }
+      - type: ConvTranspose2d
+        args: [512, 512, 2, 2, 0]
+        kwargs: { bias: true }
+      # Block 3: 512 x 16 x 16
+      - type: Conv2d
+        args: [512, 256, 3, 1, 1]
+        kwargs: { bias: true }
+      - type: ReLU
+        args: []
+        kwargs: { inplace: true }
+      - type: ConvTranspose2d
+        args: [256, 256, 2, 2, 0]
+        kwargs: { bias: true }
+      # Block 4: 256 x 32 x 32
+      - type: Conv2d
+        args: [256, 128, 3, 1, 1]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [128]
+        kwargs: {}
+      - type: ReLU
+        args: []
+        kwargs: { inplace: true }
+      - type: ConvTranspose2d
+        args: [128, 128, 2, 2, 0]
+        kwargs: { bias: true }
+      # Block 5: 128 x 64 x 64
+      - type: Conv2d
+        args: [128, 64, 3, 1, 1]
+        kwargs: { bias: true }
+      - type: ReLU
+        args: []
+        kwargs: { inplace: true }
+      - type: ConvTranspose2d
+        args: [64, 64, 2, 2, 0]
+        kwargs: { bias: true }
+      # Block 6: 128 x 128 x 128
+      - type: Conv2d
+        args: [64, 64, 3, 1, 1]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [64]
+        kwargs: {}
+      - type: ReLU
+        args: []
+        kwargs: { inplace: true }
+      # Block 7: 32 x 128 x 128
+      - type: Conv2d
+        args: [64, 32, 3, 1, 1]
+        kwargs: { bias: true }
+      - type: ReLU
+        args: []
+        kwargs: { inplace: true }
+      - type: Conv2d
+        args: [32, 3, 1, 1, 0]
+        kwargs: { bias: true }
+      - type: Sigmoid
+        args: []
+        kwargs: {}
+
+  dis:
+    width: 32
+    layers:
+      - type: RandomHorizontalFlip
+        args: []
+        kwargs: {}
+      # Block 1: 3 x 128 x 128
+      - type: Conv2d
+        args: [3, 32, 5, 2, 2]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [32]
+        kwargs: {}
+      - type: LeakyReLU
+        args: [0.2]
+        kwargs: { inplace: true }
+      # Block 2: 32 x 64 x 64
+      - type: Conv2d
+        args: [32, 64, 5, 2, 2]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [64]
+        kwargs: {}
+      - type: LeakyReLU
+        args: [0.2]
+        kwargs: { inplace: true }
+      # Block 3: 64 x 32 x 32
+      - type: Conv2d
+        args: [64, 128, 3, 2, 1]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [128]
+        kwargs: {}
+      - type: LeakyReLU
+        args: [0.2]
+        kwargs: { inplace: true }
+      # Block 4: 128 x 16 x 16
+      - type: Conv2d
+        args: [128, 256, 3, 2, 1]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [256]
+        kwargs: {}
+      - type: LeakyReLU
+        args: [0.2]
+        kwargs: { inplace: true }
+      # Block 5: 256 x 8 x 8
+      - type: Conv2d
+        args: [256, 512, 3, 2, 1]
+        kwargs: { bias: false }
+      - type: BatchNorm2d
+        args: [512]
+        kwargs: {}
+      - type: LeakyReLU
+        args: [0.2]
+        kwargs: { inplace: true }
+      # Block 6: 512 x 4 x 4
+      - type: Conv2d
+        args: [512, 1024, 4, 1, 0]
+        kwargs: { bias: true }
+      - type: LeakyReLU
+        args: [0.2]
+        kwargs: { inplace: true }
+      # Block 6: 1024 x 1 x 1
+      - type: Conv2d
+        args: [1024, 1, 1, 1, 0]
+        kwargs: { bias: true }
+      - type: Sigmoid
+        args: []
+        kwargs: {}

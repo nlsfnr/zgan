@@ -7,6 +7,7 @@ from typing import Optional
 
 from .sidecar import Sidecar
 from .utils import AttrDict, show_grid
+from .inference import Inference
 from . import models
 
 
@@ -69,6 +70,26 @@ def show(name: str, zoo: Path, n: int) -> None:
     z = gen.random_z(n)
     imgs = gen(z)
     show_grid(imgs)
+
+
+@click.option('--name', type=str, default='latest')
+@click.option('--zoo', type=Path, default=Path('./zoo/'))
+@click.option('-n', type=int, default=16)
+@click.option('--threshold', '-t', type=float, default=0.4)
+@click.option('--pop', '-p', type=int, default=None)
+def inference(name: str, zoo: Path, n: int, threshold: float, pop: int
+              ) -> None:
+    wd = zoo / name
+    if not wd.exists():
+        raise FileNotFoundError(f'Project not found: {wd}')
+    cfg = AttrDict.from_yaml(wd / 'config.yaml')
+    checkpoint = wd / 'latest.cp'
+    inf = Inference(cfg, checkpoint)
+    if pop is None:
+        imgs = inf.threshold(n, threshold)
+    else:
+        imgs = inf.best(n, pop)
+    show_grid(torch.stack(imgs))
 
 
 def _point_latest_to(zoo: Path, name: str) -> None:

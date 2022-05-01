@@ -1,6 +1,6 @@
 PYTHON=/usr/bin/env python3
 PIP_FREEZE=.requirements.freeze.txt
-PY_FILES=*.py dirk/
+PY_FILES=*.py dirk/ web/*.py
 .PHONY: ci py-deps type-check lint
 
 ci: $(PY_FILES) py-deps type-check lint

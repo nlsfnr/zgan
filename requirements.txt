@@ -6,7 +6,11 @@ mypy
 flake8
 
 matplotlib
-jupyterlab
 click
 pyyaml
 wandb
+Pillow
+tqdm
+
+gunicorn
+flask

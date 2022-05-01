@@ -15,6 +15,7 @@ cli.command('create')(apps.create_proj)
 cli.command('train')(apps.train)
 cli.command('focus')(apps.focus)
 cli.command('show')(apps.show)
+cli.command('inference')(apps.inference)
 
 
 if __name__ == '__main__':

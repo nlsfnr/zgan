@@ -101,6 +101,7 @@ class Sidecar:
     def on_training_stop(self) -> None:
         if self._wandb_ext is not None:
             self._wandb_ext.on_training_stop()
+        self.save()
         logger.info('Stopped training')
 
     def periodically(self, freq: int, skip_first: bool = False) -> bool:

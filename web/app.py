@@ -6,8 +6,8 @@ import logging
 
 sys.path.append('..')
 
-from dirk.inference import Inference
-from dirk.utils import AttrDict
+from dirk.inference import Inference  # noqa: E402
+from dirk.utils import AttrDict  # noqa: E402
 
 
 def build_app() -> flask.Flask:
@@ -18,9 +18,9 @@ def build_app() -> flask.Flask:
     config_path = os.getenv('ZGAN_CONFIG', None)
     checkpoint_path = os.getenv('ZGAN_CHECKPOINT', None)
     if config_path is None:
-        raise FileNotFoundError(f'Env var not set: ZGAN_CONFIG')
+        raise FileNotFoundError('Env var not set: ZGAN_CONFIG')
     if checkpoint_path is None:
-        raise FileNotFoundError(f'Env var not set: ZGAN_CHECKPOINT')
+        raise FileNotFoundError('Env var not set: ZGAN_CHECKPOINT')
 
     cfg = AttrDict.from_yaml(Path(config_path))
     inf = Inference(cfg, Path(checkpoint_path))

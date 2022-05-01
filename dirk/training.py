@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch
 from logging import getLogger
 from itertools import count
-from typing import Tuple, Optional, Union, Iterator
+from typing import Tuple, Optional, Union, Iterator, Dict
 
 from .utils import AttrDict
 from .models import Generator, Discriminator
@@ -33,12 +33,15 @@ class Trainer:
     sidecar: sidecar_.Sidecar
     dataset: dataset_.ImgDataset
     _device: torch.device = field(init=False)
+    _gen_ema: EMA = field(init=False)
     _gen_gpu: Optional[nn.DataParallel] = None  # type: ignore
     _dis_gpu: Optional[nn.DataParallel] = None  # type: ignore
 
     def __post_init__(self) -> None:
         self.sidecar.attach(self)
         self._device = self.get_device(self.cfg)
+        self._gen_ema = EMA(self.cfg.optim.gen.ema_alpha)
+        self._gen_ema.register_module(self.gen)
         if self.cfg.use_gpu:
             gpu_ids = tuple(range(torch.cuda.device_count()))
             logger.info(f'Using CUDA with GPUs: {gpu_ids}')
@@ -190,6 +193,37 @@ class Trainer:
         gen_loss.backward()  # type: ignore
         # Update the parameters
         self.gen_opt.step()
+        self._gen_ema(self.gen)
         # Return the losses
         dis_loss = (dis_real_loss + dis_fake_loss) / 2.
         return float(dis_loss.item()), float(gen_loss.item())
+
+
+@dataclass
+class EMA():
+    """Partly taken from here:
+    https://discuss.pytorch.org/t/how-to-apply-exponential-moving-average-
+    decay-for-variables/10856/4 """
+    mu: float
+    shadow: Dict[str, Tensor] = field(default_factory=dict)
+
+    def register_param(self, name: str, val: Tensor) -> EMA:
+        self.shadow[name] = val.clone()
+        return self
+
+    def register_module(self, module: nn.Module) -> EMA:
+        for name, param in module.named_parameters():
+            if param.requires_grad:
+                self.register_param(name, param.data)
+        return self
+
+    def __call__(self, module: nn.Module) -> None:
+        for name, param in module.named_parameters():
+            if not param.requires_grad:
+                continue
+            assert name in self.shadow
+            delta = (1.0 - self.mu) * param.data
+            residual = self.mu * self.shadow[name]
+            new_average = delta + residual
+            self.shadow[name] = new_average.clone()
+            param.data = new_average

@@ -75,8 +75,8 @@ def show(name: str, zoo: Path, n: int) -> None:
 @click.option('--name', type=str, default='latest')
 @click.option('--zoo', type=Path, default=Path('./zoo/'))
 @click.option('-n', type=int, default=16)
-@click.option('--threshold', '-t', type=float, default=0.4)
-@click.option('--pop', '-p', type=int, default=None)
+@click.option('--threshold', '-t', type=float, default=None)
+@click.option('--pop', '-p', type=int, default=1000)
 def inference(name: str, zoo: Path, n: int, threshold: float, pop: int
               ) -> None:
     wd = zoo / name
@@ -85,10 +85,10 @@ def inference(name: str, zoo: Path, n: int, threshold: float, pop: int
     cfg = AttrDict.from_yaml(wd / 'config.yaml')
     checkpoint = wd / 'latest.cp'
     inf = Inference(cfg, checkpoint)
-    if pop is None:
-        imgs = inf.threshold(n, threshold)
-    else:
+    if threshold is None:
         imgs = inf.best(n, pop)
+    else:
+        imgs = inf.threshold(n, threshold)
     show_grid(torch.stack(imgs))
 
 

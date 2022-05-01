@@ -1,12 +1,13 @@
 # Z-GAN
 
-## Create a *project*
-
 A Generative Adversarial Network (GAN) used to generate images. Requires a CUDA
 GPU. Developed on Linux, but running it on other platforms should not be too
 much of a problem. To install all dependencies, create a virtual environment and
-run `make py-deps` or simply `pip install -r requirements.txt`. To create a new
-generator-discriminator pair (a *project*), run:
+run `make py-deps` or simply `pip install -r requirements.txt`.
+
+## Create a *project*
+
+To create a new generator-discriminator pair (a *project*), run:
 
     ./cli.py create
 

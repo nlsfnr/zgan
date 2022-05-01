@@ -87,7 +87,7 @@ class Sidecar:
             logger.info(f'It: {self.iteration}, '
                         f'Dis: {dis_loss}, '
                         f'Gen: {gen_loss}')
-        if self.periodically(self.cfg.log.save_freq, skip_first=True):
+        if self.periodically(self.cfg.log.save_freq):
             self.save()
         if self._wandb_ext is not None:
             self._wandb_ext.on_batch_stop()

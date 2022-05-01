@@ -80,3 +80,9 @@ points to the project's most recent checkpoint.
 The model architecture of both the generator and discriminator is determined by
 the `config.yaml` in the project. The way this is done should be
 self-explanatory.
+
+## Weights and Biases
+
+Samples generated during training are sent to Weights and Biases
+([link](https://wandb.ai/)). This can be disabled in the configuration file. An
+example can be seen [here](https://wandb.ai/nlsfnr/zgan/runs/326tnjos).

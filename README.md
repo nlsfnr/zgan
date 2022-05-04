@@ -7,6 +7,34 @@ GPU. Developed on Linux, but running it on other platforms should not be too
 much of a problem. To install all dependencies, create a virtual environment and
 run `make py-deps` or simply `pip install -r requirements.txt`.
 
+## Quick overview
+
+- `./dirk/apps.py`: short "applications" that are called by `./cli.py`
+- `./dirk/training.py`: Implements the `Trainer` that is responsible for
+  maintaining the generator and discriminator as well as their respective
+  optimisers during training. It implements the training loop and mechanisms for
+  loading and saving the models.
+- `./dirk/sidecar.py`: Responsible for logging and other periodic tasks during
+  training. This functionality could have been implemented directly in the
+  `Trainer`, but to keep the code of the latter cleaner, it was moved into its
+  own module.
+- `./dirk/dataset.py`: Contains the dataset that loads images from the given
+  directory. It assumes that the dataset fits into the main memory of the host.
+  Preprocessing of the images is done here.
+- `./dirk/models.py`: The implementation of the generator and discriminator.
+  Note that the architecture of both is defined in the configuration files (e.g.
+  `./config/default.yaml`), and the models implemented in `./dirk/models.py`
+  merely construct a torch module from the configuration files. This allows for
+  some basic versioning of model architecture across runs and allows us to
+  easily load older models, even after changing `./dirk/models.py`. Note that,
+  as of the current commit, only feed-forward architectures are possible. This
+  could be changed in the future. To make the architectures specified in the
+  configuration files more parametrisable, variables can be used. If a string
+  value is encountered in either one of the `args` or `kwargs` fields of an
+  entry in the `layers` list in the configuration file, they are evaluated using
+  python's `eval` with the context given in the `context` field of the
+  configuration.
+
 ## Create a *project*
 
 To create a new generator-discriminator pair (a *project*), run:
@@ -88,5 +116,10 @@ self-explanatory.
 Samples generated during training are sent to Weights and Biases
 ([link](https://wandb.ai/)). This can be disabled in the configuration file. An
 example can be seen [here](https://wandb.ai/nlsfnr/zgan/runs/326tnjos).
+
+## Viking
+
+The University of York's compute cluster "Viking" was used to train some of the
+GANs in this project. To this end, some scripts can be found in `./viking/`.
 
 ![Generated birds](./media/sample-B-32.png "Birds gnerated from the GAN")

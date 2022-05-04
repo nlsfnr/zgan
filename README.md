@@ -1,6 +1,6 @@
 # Z-GAN
 
-![Generated birds](./media/sample-B-32.png "Birds gnerated from the GAN")
+![Generated birds](./media/sample-C-32.png "Birds gnerated from the GAN")
 
 A Generative Adversarial Network (GAN) used to generate images. Requires a CUDA
 GPU. Developed on Linux, but running it on other platforms should not be too
@@ -89,4 +89,4 @@ Samples generated during training are sent to Weights and Biases
 ([link](https://wandb.ai/)). This can be disabled in the configuration file. An
 example can be seen [here](https://wandb.ai/nlsfnr/zgan/runs/326tnjos).
 
-![Generated birds](./media/sample-C-32.png "Birds gnerated from the GAN")
+![Generated birds](./media/sample-B-32.png "Birds gnerated from the GAN")

@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F  # type: ignore
 from torch import Tensor
+from typing import Dict, Any, Optional
 
 from .utils import AttrDict
 
@@ -41,18 +42,66 @@ class RandomHorizontalFlip(nn.Module):
         return torch.stack(new_imgs)
 
 
-def build_layer(spec: AttrDict) -> nn.Module:
-    cls = {'ConvTranspose2d': nn.ConvTranspose2d,
-           'Upsample': nn.Upsample,
-           'Conv2d': nn.Conv2d,
-           'ReLU': nn.ReLU,
-           'LeakyReLU': nn.LeakyReLU,
-           'BatchNorm2d': nn.BatchNorm2d,
-           'Sigmoid': nn.Sigmoid,
-           'RandomHorizontalFlip': RandomHorizontalFlip}[spec.type]
-    module = cls(*spec.args, **spec.kwargs)
+@dataclass(unsafe_hash=True)
+class SpatialEncoding(nn.Module):
+    n: int = field(hash=False, default=4)
+
+    def __post_init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: Tensor) -> Tensor:
+        b, _, h, w = x.shape
+        half_pi = 0.5 * torch.pi
+        device = x.device
+        # Height
+        xs = (torch.arange(0, half_pi, step=half_pi / h)
+                .unsqueeze(0)
+                .unsqueeze(0)
+                .unsqueeze(-1)).to(device)
+        for i in range(self.n):
+            t = torch.sin(2**i * xs)
+            t = t.expand(b, 1, -1, w)
+            x = torch.concat((x, t), dim=1)
+        # Width
+        xs = (torch.arange(0, half_pi, step=half_pi / w)
+                .unsqueeze(0)
+                .unsqueeze(0)
+                .unsqueeze(0)).to(device)
+        for i in range(self.n):
+            t = torch.sin(2**i * xs)
+            t = t.expand(b, 1, h, -1)
+            x = torch.concat((x, t), dim=1)
+        return x
+
+
+
+def build_layer(spec: AttrDict, ctx: Optional[AttrDict] = None
+                ) -> nn.Module:
+    if hasattr(nn, spec.type):
+        cls = getattr(nn, spec.type)
+    else:
+        cls = {'RandomHorizontalFlip': RandomHorizontalFlip,
+               'SpatialEncoding': SpatialEncoding}[spec.type]
+
+    # Note that this is obviously a security rist, but we trust user input so
+    # its ok lol
+    def eval_str(x: Any) -> Any:
+        if isinstance(x, str):
+            return eval(x, ctx)
+        return x
+
+    args = [eval_str(arg) for arg in spec.args]
+    kwargs = {k: eval_str(v) for k, v in spec.kwargs.items()}
+    module = cls(*args, **kwargs)
     assert isinstance(module, nn.Module)
     return module
+
+
+def build_module(spec: AttrDict) -> nn.Module:
+    ctx = spec.get('context', AttrDict())
+    return nn.Sequential(*[build_layer(spec, ctx)
+                           for spec in spec.layers])
+
 
 
 @dataclass(unsafe_hash=True)
@@ -61,12 +110,15 @@ class Generator(nn.Module):
 
     def __post_init__(self) -> None:
         super().__init__()
-        self.main = nn.Sequential(*[build_layer(spec)
-                                    for spec in self.cfg.arch.gen.layers])
+        self.main = build_module(self.cfg.arch.gen)
         self.apply(radford_init)
 
     def random_z(self, n: int) -> Tensor:
-        return torch.randn(size=(n, self.cfg.arch.gen.z, 1, 1))
+        try:
+            z = self.cfg.arch.gen.context.z
+        except AttributeError:
+            z = self.cfg.arch.gen.z
+        return torch.randn(size=(n, z, 1, 1))
 
     def forward(self, z: Tensor) -> Tensor:
         imgs = self.main(z)
@@ -88,40 +140,7 @@ class Discriminator(nn.Module):
 
     def __post_init__(self) -> None:
         super().__init__()
-        # f = self.cfg.arch.dis.width
-        # c = self.cfg.img.channels
-        # self.main = nn.Sequential(
-        #     # RandomHorizontalFlip(),
-        #     # cfg.img_channels x 128 x 128
-        #     nn.Conv2d(c, f, 5, 2, 1, bias=False),
-        #     nn.BatchNorm2d(f),  # type: ignore
-        #     nn.LeakyReLU(0.2, inplace=True),
-        #     # cf x 64 x 64
-        #     nn.Conv2d(f, f * 4, 5, 2, 1, bias=False),
-        #     nn.BatchNorm2d(f * 4),  # type: ignore
-        #     nn.LeakyReLU(0.2, inplace=True),
-        #     # cf x 32 x 32
-        #     nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
-        #     nn.BatchNorm2d(f * 4),  # type: ignore
-        #     nn.LeakyReLU(0.2, inplace=True),
-        #     # cf * 2 x 16 x 16
-        #     nn.Conv2d(f * 4, f * 4, 3, 2, 1, bias=False),
-        #     nn.BatchNorm2d(f * 4),  # type: ignore
-        #     nn.LeakyReLU(0.2, inplace=True),
-        #     # cf * 4 x 8 x 8
-        #     nn.Conv2d(f * 4, f * 8, 3, 2, 1, bias=False),
-        #     nn.BatchNorm2d(f * 8),  # type: ignore
-        #     nn.LeakyReLU(0.2, inplace=True),
-        #     # cf * 8 x 4 x 4
-        #     nn.Conv2d(f * 8, f * 8, 4, 1, 0),
-        #     nn.LeakyReLU(0.2, inplace=True),
-        #     # cf * 8 x 1 x 1
-        #     nn.Conv2d(f * 8, 1, 1, 1, 0),
-        #     nn.Sigmoid(),
-        #     # 1 x 1 x 1
-        # )
-        self.main = nn.Sequential(*[build_layer(spec)
-                                    for spec in self.cfg.arch.dis.layers])
+        self.main = build_module(self.cfg.arch.dis)
         self.apply(radford_init)
 
     def forward(self, imgs: Tensor) -> Tensor:

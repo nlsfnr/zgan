@@ -15,5 +15,5 @@ module load system/CUDA/11.0.2-GCC-9.3.0
 pushd ~/scratch/zgan/
 . .venv/bin/activate
 make py-deps
-./cli.py train
+./cli.py train --name=$NAME
 popd

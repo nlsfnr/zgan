@@ -96,6 +96,7 @@ class Sidecar:
     def on_training_start(self) -> None:
         if self._wandb_ext is not None:
             self._wandb_ext.on_training_start()
+        self.save()
         logger.info('Started training')
 
     def on_training_stop(self) -> None:

@@ -66,5 +66,6 @@ def show_grid(imgs: Tensor, figsize: Tuple[int, int] = (12, 12),
     plt.tight_layout()
     plt.axis("off")
     plt.imshow(np.transpose(grid, (1, 2, 0)))
+    plt.tight_layout()
     if show:
         plt.show()

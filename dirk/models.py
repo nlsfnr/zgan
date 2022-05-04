@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F  # type: ignore
 from torch import Tensor
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
 from .utils import AttrDict
 
@@ -55,24 +55,23 @@ class SpatialEncoding(nn.Module):
         device = x.device
         # Height
         xs = (torch.arange(0, half_pi, step=half_pi / h)
-                .unsqueeze(0)
-                .unsqueeze(0)
-                .unsqueeze(-1)).to(device)
+              .unsqueeze(0)
+              .unsqueeze(0)
+              .unsqueeze(-1)).to(device)
         for i in range(self.n):
             t = torch.sin(2**i * xs)
             t = t.expand(b, 1, -1, w)
             x = torch.concat((x, t), dim=1)
         # Width
         xs = (torch.arange(0, half_pi, step=half_pi / w)
-                .unsqueeze(0)
-                .unsqueeze(0)
-                .unsqueeze(0)).to(device)
+              .unsqueeze(0)
+              .unsqueeze(0)
+              .unsqueeze(0)).to(device)
         for i in range(self.n):
             t = torch.sin(2**i * xs)
             t = t.expand(b, 1, h, -1)
             x = torch.concat((x, t), dim=1)
         return x
-
 
 
 def build_layer(spec: AttrDict, ctx: Optional[AttrDict] = None
@@ -101,7 +100,6 @@ def build_module(spec: AttrDict) -> nn.Module:
     ctx = spec.get('context', AttrDict())
     return nn.Sequential(*[build_layer(spec, ctx)
                            for spec in spec.layers])
-
 
 
 @dataclass(unsafe_hash=True)

@@ -28,37 +28,42 @@ class Inference:
         assert isinstance(state, AttrDict)
         self.gen = Generator(self.cfg)
         self.gen.load_state_dict(state.trainer.gen)
+        self.gen.eval()
         self.dis = Discriminator(self.cfg)
         self.dis.load_state_dict(state.trainer.dis)
+        self.dis.eval()
         logger.info('Loaded Generator and Discriminator from '
                     f'{self.checkpoint}')
 
     def threshold(self, n: int, threshold: float, max_attempts: int = 1024
                   ) -> List[Tensor]:
         selection: List[Tensor] = []
-        while len(selection) < n and max_attempts != 0:
-            remaining = n - len(selection)
-            z = self.gen.random_z(128)
-            imgs = self.gen(z)
-            scores = self.dis(imgs).squeeze(-1)
-            indices = scores >= threshold
-            selection.extend(imgs[indices][:remaining])
-            max_attempts -= 1
-            logger.info(f'Found {len(selection)} samples with {max_attempts} '
-                        'attempts remaining, mean score is '
-                        f'{torch.mean(scores)}')
+        with torch.no_grad():
+            while len(selection) < n and max_attempts != 0:
+                remaining = n - len(selection)
+                z = self.gen.random_z(128)
+                imgs = self.gen(z)
+                scores = self.dis(imgs).squeeze(-1)
+                indices = scores >= threshold
+                selection.extend(imgs[indices][:remaining])
+                max_attempts -= 1
+                logger.info(f'Found {len(selection)} samples with {max_attempts} '
+                            'attempts remaining, mean score is '
+                            f'{torch.mean(scores)}')
         return selection
 
     def best(self, n: int, pop: int) -> List[Tensor]:
         assert pop >= n
         selection: List[Tensor] = []
         scores = []
-        while len(selection) < pop:
-            z = self.gen.random_z(128)
-            imgs = self.gen(z)
-            scores_ = self.dis(imgs).squeeze(-1)
-            selection.extend(imgs)
-            scores.extend(scores_)
+        with torch.no_grad():
+            while len(selection) < pop:
+                z = self.gen.random_z(128)
+                imgs = self.gen(z)
+                scores_ = self.dis(imgs).squeeze(-1).detach()
+                selection.extend(imgs)
+                scores.extend(scores_)
+                logger.info(f'Remaining: {pop - len(selection)}')
         sel = torch.stack(selection)
         sco = torch.stack(scores)
         indices = torch.argsort(sco)[:n]
@@ -68,6 +73,11 @@ class Inference:
                     f'mean pop scores: {round(sco_mean, 4)}, '
                     f'mean selection scores: {round(sel_mean, 4)} ')
         return [sel[idx] for idx in indices]
+
+    def to_u8_img(self, imgs: Tensor) -> Tensor:
+        assert 0 <= imgs.min()
+        assert 1 >= imgs.max()
+        return (imgs * 255).type(torch.uint8)
 
     @staticmethod
     def to_base64_img(tensor: Tensor) -> str:

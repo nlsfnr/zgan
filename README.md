@@ -1,5 +1,7 @@
 # Z-GAN
 
+![Generated birds](./media/sample-B-32.png "Birds gnerated from the GAN")
+
 A Generative Adversarial Network (GAN) used to generate images. Requires a CUDA
 GPU. Developed on Linux, but running it on other platforms should not be too
 much of a problem. To install all dependencies, create a virtual environment and

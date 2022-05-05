@@ -25,6 +25,8 @@ GENERATED = 0.
 
 @dataclass
 class Trainer:
+    """The Trainer contains both the Generator and Discriminator and their
+    respective optimisers. It implements the training loop."""
     cfg: AttrDict
     gen: Generator
     dis: Discriminator
@@ -62,6 +64,7 @@ class Trainer:
         return cls(cfg, gen, dis, gen_opt, dis_opt, sc, dataset)
 
     def get_state(self) -> AttrDict:
+        """Returns the state dict of the Trainer."""
         return AttrDict(
                 gen=self.gen.state_dict(),
                 dis=self.dis.state_dict(),
@@ -72,6 +75,7 @@ class Trainer:
     @classmethod
     def from_state(cls, cfg: AttrDict, sc: sidecar_.Sidecar, state: AttrDict
                    ) -> Trainer:
+        """Instantiates a Trainer from a state dict."""
         # Instantiate modules
         device = cls.get_device(cfg)
         # The models need to be on the device before being assigned to an
@@ -94,6 +98,7 @@ class Trainer:
     @staticmethod
     def _get_optimizers(gen: Generator, dis: Discriminator, cfg: AttrDict
                         ) -> Tuple[optim.AdamW, optim.AdamW]:
+        """Instantiates the optimisers for both models."""
         gen_betas: Tuple[float, float] = cfg.optim.gen.betas
         dis_betas: Tuple[float, float] = cfg.optim.dis.betas
         gen_opt = optim.AdamW(gen.parameters(),
@@ -201,7 +206,9 @@ class Trainer:
 
 @dataclass
 class EMA():
-    """Partly taken from here:
+    """ Exponential moving average of the parameters of a given module.
+
+    Partly taken from here:
     https://discuss.pytorch.org/t/how-to-apply-exponential-moving-average-
     decay-for-variables/10856/4 """
     mu: float
@@ -218,6 +225,8 @@ class EMA():
         return self
 
     def __call__(self, module: nn.Module) -> None:
+        if self.mu == 0.:
+            return
         for name, param in module.named_parameters():
             if not param.requires_grad:
                 continue

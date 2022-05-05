@@ -44,7 +44,10 @@ class RandomHorizontalFlip(nn.Module):
 
 @dataclass(unsafe_hash=True)
 class SpatialEncoding(nn.Module):
-    n: int = field(hash=False, default=4)
+    """Adds spatial information to each pixel in the form of additional
+    channels. Similar to the spatial encoding commonly used with
+    transformers."""
+    n: int = field(hash=False, default=4)  # Number of additional channels
 
     def __post_init__(self) -> None:
         super().__init__()
@@ -76,6 +79,7 @@ class SpatialEncoding(nn.Module):
 
 def build_layer(spec: AttrDict, ctx: Optional[AttrDict] = None
                 ) -> nn.Module:
+    """Builds a module from one entry in the config's 'layers' list."""
     if hasattr(nn, spec.type):
         cls = getattr(nn, spec.type)
     else:
@@ -97,6 +101,7 @@ def build_layer(spec: AttrDict, ctx: Optional[AttrDict] = None
 
 
 def build_module(spec: AttrDict) -> nn.Module:
+    """Build a module from the config's 'gen' or 'dis' fields."""
     ctx = spec.get('context', AttrDict())
     return nn.Sequential(*[build_layer(spec, ctx)
                            for spec in spec.layers])

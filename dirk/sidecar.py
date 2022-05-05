@@ -15,6 +15,9 @@ logger = getLogger('sidecar')
 
 @dataclass
 class Sidecar:
+    """Responsible for logging and other periodic tasks during training. This
+    could also be implemented inside the Trainer, but to avoid cluttering the
+    code of the latter, it was put into its own class."""
     cfg: AttrDict
     workdir: Path
     iteration: int = 0
@@ -113,6 +116,7 @@ class Sidecar:
 
 @dataclass
 class WandBExtension:
+    """Responsible for logging to Weights and Biases (https://wandb.ai)."""
     trainer: training.Trainer
     trainer_id: Any = None
 

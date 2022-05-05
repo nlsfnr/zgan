@@ -9,6 +9,8 @@ from pathlib import Path
 
 
 class AttrDict(Dict[str, Any]):
+    """A dictionary with JavaScript-like syntax. I.e. instead of d["my_key"],
+    we can simply say d.my_key."""
 
     def __getattr__(self, key: str) -> Any:
         try:

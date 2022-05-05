@@ -19,6 +19,7 @@ logger = logging.getLogger('dataset')
 
 @dataclass
 class ImgDataset(Dataset[Tensor]):
+    """Finds and loads all images from a given directory."""
     cfg: AttrDict
     _cache: Optional[Tensor] = None
     _files: Optional[List[str]] = None
